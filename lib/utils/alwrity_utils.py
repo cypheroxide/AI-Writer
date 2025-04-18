@@ -1,31 +1,31 @@
 import re
-import streamlit as st
-import tempfile
-from loguru import logger
-from lib.ai_web_researcher.gpt_online_researcher import gpt_web_researcher
-from lib.ai_web_researcher.metaphor_basic_neural_web_search import metaphor_find_similar
-from lib.ai_writers.keywords_to_blog_streamlit import write_blog_from_keywords
-from lib.ai_writers.speech_to_blog.main_audio_to_blog import generate_audio_blog
-from lib.ai_writers.long_form_ai_writer import long_form_generator
-from lib.ai_writers.ai_news_article_writer import ai_news_generation
-from lib.ai_writers.ai_agents_crew_writer import ai_agents_writers
-from lib.ai_writers.ai_financial_writer import write_basic_ta_report
-from lib.ai_writers.facebook_ai_writer import facebook_post_writer
-from lib.ai_writers.linkedin_ai_writer import linked_post_writer
-from lib.ai_writers.twitter_ai_writer import tweet_writer 
-from lib.ai_writers.insta_ai_writer import insta_writer
-from lib.ai_writers.youtube_ai_writer import write_yt_title, write_yt_description, write_yt_script
-from lib.ai_writers.web_url_ai_writer import blog_from_url
-from lib.ai_writers.image_ai_writer import blog_from_image
-from lib.ai_writers.ai_essay_writer import ai_essay_generator
 import os
 import PyPDF2
 import tiktoken
 import openai
+import streamlit as st
+import tempfile
+from loguru import logger
+
+from lib.ai_web_researcher.gpt_online_researcher import gpt_web_researcher
+from lib.ai_writers.keywords_to_blog_streamlit import write_blog_from_keywords
+from lib.ai_writers.speech_to_blog.main_audio_to_blog import generate_audio_blog
+from lib.ai_writers.long_form_ai_writer import long_form_generator
+from lib.ai_writers.ai_news_article_writer import ai_news_generation
+#from lib.ai_writers.ai_agents_crew_writer import ai_agents_writers
+from lib.ai_writers.ai_financial_writer import write_basic_ta_report
+from lib.ai_writers.ai_facebook_writer.facebook_ai_writer import facebook_main_menu
+from lib.ai_writers.linkedin_writer.linkedin_ai_writer import linkedin_main_menu
+from lib.ai_writers.twitter_writers.twitter_dashboard import run_dashboard
+from lib.ai_writers.insta_ai_writer import insta_writer
+from lib.ai_writers.youtube_writers.youtube_ai_writer import youtube_main_menu
+from lib.ai_writers.web_url_ai_writer import blog_from_url
+from lib.ai_writers.image_ai_writer import blog_from_image
+from lib.ai_writers.ai_essay_writer import ai_essay_generator
 from lib.gpt_providers.text_to_image_generation.main_generate_image_from_prompt import generate_image
 from lib.utils.voice_processing import record_voice
-from lib.content_planning_calender.content_planning_agents_alwrity_crew import ai_agents_content_planner
-from ..gpt_providers.text_generation.main_text_generation import llm_text_gen
+#from lib.content_planning_calender.content_planning_agents_alwrity_crew import ai_agents_content_planner
+from lib.gpt_providers.text_generation.main_text_generation import llm_text_gen
 
 
 def is_youtube_link(text):
@@ -292,9 +292,9 @@ def ai_agents_team():
             if plan_keywords and len(plan_keywords.split()) >= 2:
                 with st.spinner("Get Content Plan..."):
                     try:
-                        plan_content = ai_agents_content_planner(plan_keywords)
-                        st.success(f"Successfully generated content plan for: {plan_keywords}")
-                        st.markdown(plan_content)
+                        #plan_content = ai_agents_content_planner(plan_keywords)
+                        st.success(f"Coming soon: Content plan for: {plan_keywords}")
+                        #st.markdown(plan_content)
                     except Exception as err:
                         st.error(f"Failed to generate content plan: {err}")
             else:
@@ -432,51 +432,6 @@ def ai_news_writer():
             st.error("Please enter valid keywords for the news report. 🚫")
 
 
-def competitor_analysis():
-    st.title("Competitor Analysis")
-    st.markdown("""**Use Cases:**
-        - Know similar companies and alternatives for the given URL.
-        - Write listicles, similar companies, Top tools, alternative-to, similar products, similar websites, etc.
-        [Read More Here](https://docs.exa.ai/reference/company-analyst)
-    """)
-
-    similar_url = st.text_input("👋 Enter a single valid URL for web analysis:",
-                placeholder="Provide a competitor's URL and get details of similar/alternative companies.")
-
-    if st.button("Analyze"):
-        if similar_url:
-            try:
-                st.info(f"Starting analysis for the URL: {similar_url}")
-                with st.spinner("Performing competitor analysis..."):
-                    result = metaphor_find_similar(similar_url)
-                st.success("Analysis completed successfully!")
-                st.write(result)
-            except Exception as err:
-                st.error(f"✖ 🚫 Failed to do similar search.\nError: {err}")
-        else:
-            st.error("Please enter a valid URL.")
-
-
-def do_web_research():
-    """ Input keywords and do web research and present a report."""
-    st.title("Web Research Assistant")
-    st.write("Enter keywords for web research. The keywords should be at least three words long.")
-    
-    search_keywords = st.text_input("Search Keywords", placeholder="Enter keywords for web research...")
-    if st.button("Start Web Research"):
-        if search_keywords and len(search_keywords.split()) >= 3:
-            try:
-                st.info(f"Starting web research on given keywords: {search_keywords}")
-                with st.spinner("Performing web research..."):
-                    web_research_result = gpt_web_researcher(search_keywords)
-                st.success("Web research completed successfully!")
-                st.write(web_research_result)
-            except Exception as err:
-                st.error(f"ERROR: Failed to do web research: {err}")
-        else:
-            st.warning("Search keywords should be at least three words long. Please try again.")
-
-
 def ai_finance_ta_writer():
     st.markdown("<div class='sub-header'>AI Financial Technical Analysis Writer</div>", unsafe_allow_html=True)
 
@@ -505,26 +460,18 @@ def ai_social_writer():
         ("linkedin", "LinkedIn"),
         ("twitter", "Twitter"),
         ("instagram", "Instagram"),
-        ("youtube", "YouTube")  # Add YouTube
+        ("youtube", "YouTube")
     ]
 
     # Selectbox for choosing a platform
     selected_platform = st.radio("Choose a Social Media Platform:", social_media_options, format_func=lambda x: x[1])
     if "facebook" in selected_platform:
-        facebook_post_writer()
+        facebook_main_menu()
     elif "linkedin" in selected_platform:
-        linked_post_writer()
+        linkedin_main_menu()
     elif "twitter" in selected_platform:
-        tweet_writer()
+        run_dashboard()
     elif "instagram" in selected_platform:
         insta_writer()
-#    elif "youtube" in selected_platform:
-#        options = ["Write YT Description", "Write YT Title", "Write YT Script"]
-#        selected_option = st.radio("", options)
-#
-#        if selected_option == "Write YT Description":
-#            write_yt_description()
-#        elif selected_option == "Write YT Title":
-#            write_yt_title()
-#        elif selected_option == "Write YT Script":
-#            write_yt_script()
+    elif "youtube" in selected_platform:
+        youtube_main_menu()
