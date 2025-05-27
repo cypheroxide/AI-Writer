@@ -17,6 +17,8 @@ from .modules.end_screen_generator import write_yt_end_screen
 from .modules.tags_generator import write_yt_tags
 from .modules.shorts_script_generator import write_yt_shorts
 from .modules.community_post_generator import write_yt_community_post
+from .modules.shorts_video_generator import write_yt_shorts_video
+from .modules.channel_trailer_generator import write_yt_channel_trailer
 
 
 def youtube_main_menu():
@@ -63,6 +65,24 @@ def youtube_main_menu():
             "color": "#FF0000",  # YouTube red
             "category": "Content Creation",
             "function": write_yt_shorts,
+            "status": "active"
+        },
+        {
+            "name": "YT Shorts Video Generator",
+            "icon": "🎥",
+            "description": "Generate complete YouTube Shorts videos with AI-generated images, narration, and music.",
+            "color": "#FF0000",  # YouTube red
+            "category": "Content Creation",
+            "function": write_yt_shorts_video,
+            "status": "active"
+        },
+        {
+            "name": "Channel Trailer Generator",
+            "icon": "🎥",
+            "description": "Create compelling channel trailers that convert visitors into subscribers.",
+            "color": "#FF0000",  # YouTube red
+            "category": "Content Creation",
+            "function": write_yt_channel_trailer,
             "status": "active"
         },
         
@@ -120,15 +140,6 @@ def youtube_main_menu():
             "name": "Analytics Insights",
             "icon": "📊",
             "description": "Get AI-powered insights and recommendations based on your channel analytics.",
-            "color": "#990000",  # Even darker red for future
-            "category": "Future Tools",
-            "function": None,
-            "status": "future"
-        },
-        {
-            "name": "Channel Trailer Generator",
-            "icon": "🎥",
-            "description": "Create compelling channel trailers that convert visitors into subscribers.",
             "color": "#990000",  # Even darker red for future
             "category": "Future Tools",
             "function": None,

@@ -1,9 +1,29 @@
+"""
+Twitter Dashboard with modern UI components.
+"""
+
 import streamlit as st
-import streamlit.components.v1 as components
 from typing import Dict, List
 import json
+from datetime import datetime
 
 from .tweet_generator import smart_tweet_generator
+from .twitter_streamlit_ui import (
+    TwitterDashboard,
+    FeatureCard,
+    TweetForm,
+    SettingsForm,
+    Sidebar,
+    Header,
+    Tabs,
+    Breadcrumbs,
+    Theme,
+    save_to_session,
+    get_from_session,
+    clear_session,
+    show_success_message,
+    show_error_message
+)
 
 def load_feature_data() -> Dict:
     """Load feature data from a structured format."""
@@ -125,87 +145,167 @@ def load_feature_data() -> Dict:
         }
     }
 
-def render_feature_card(feature: Dict) -> None:
-    """Render a single feature card with its details."""
-    with st.container():
-        st.markdown(f"""
-            <div style='padding: 20px; border-radius: 10px; background-color: #f0f2f6; margin-bottom: 20px;'>
-                <h3 style='margin: 0;'>{feature['icon']} {feature['name']}</h3>
-                <p style='margin: 10px 0;'>{feature['description']}</p>
-                <span style='background-color: {'#4CAF50' if feature['status'] == 'active' else '#ffd700'}; 
-                            padding: 5px 10px; border-radius: 15px; font-size: 0.8em;'>
-                    {feature['status'].title()}
-                </span>
-            </div>
-        """, unsafe_allow_html=True)
-
-def render_category_section(category: Dict) -> None:
-    """Render a category section with all its features."""
-    st.markdown(f"### {category['icon']} {category['title']}")
-    st.markdown(f"*{category['description']}*")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        render_feature_card(category['features'][0])
-    with col2:
-        render_feature_card(category['features'][1])
-
 def run_dashboard():
     """Main function to run the Twitter dashboard."""
-    # Header
-    st.title("🐦 Twitter AI Writer Dashboard")
-    st.markdown("""
-        Welcome to your all-in-one Twitter content creation and management platform. 
-        Explore our AI-powered tools to enhance your Twitter marketing strategy.
-    """)
-
+    # Initialize dashboard
+    dashboard = TwitterDashboard()
+    
     # Load feature data
     features = load_feature_data()
-
-    # Create tabs for different sections
-    tab1, tab2, tab3 = st.tabs(["🎯 Quick Actions", "📊 Analytics", "⚙️ Settings"])
-
-    with tab1:
-        st.markdown("### 🚀 Quick Actions")
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            if st.button("📝 Create New Tweet", use_container_width=True):
-                # Call the Smart Tweet Generator
-                smart_tweet_generator()
-        with col2:
-            st.button("📅 Schedule Content", use_container_width=True)
-        with col3:
-            st.button("📊 View Analytics", use_container_width=True)
-
-    with tab2:
-        st.markdown("### 📈 Analytics Dashboard")
-        st.info("Analytics features coming soon! Stay tuned for detailed insights and performance metrics.")
-
-    with tab3:
-        st.markdown("### ⚙️ Settings")
-        st.info("Settings and configuration options coming soon!")
-
-    # Main content area
-    st.markdown("## 🛠️ Available Tools")
     
-    # Render each category
-    for category in features.values():
-        render_category_section(category)
-        
-        # If this is the tweet generation category and the Smart Tweet Generator is active,
-        # add a button to launch it
-        if category["title"] == "Tweet Generation & Optimization" and category["features"][0]["status"] == "active":
-            if st.button(f"🚀 Launch {category['features'][0]['name']}", use_container_width=True):
-                category["features"][0]["function"]()
+    # Setup navigation
+    sidebar = Sidebar(title="Twitter Tools")
+    sidebar.add_menu_item("Dashboard", "📊", "dashboard")
+    sidebar.add_menu_item("Tweet Generator", "✍️", "tweet_generator")
+    sidebar.add_menu_item("Analytics", "📈", "analytics")
+    sidebar.add_menu_item("Settings", "⚙️", "settings")
+    
+    # Setup header
+    header = Header(
+        title="Twitter AI Writer",
+        subtitle="Your all-in-one Twitter content creation and management platform"
+    )
+    header.add_action("New Tweet", "✏️", lambda: save_to_session("current_page", "tweet_generator"))
+    header.add_action("Refresh", "🔄", lambda: st.experimental_rerun())
+    
+    # Setup tabs
+    tabs = Tabs()
+    tabs.add_tab("Overview", "📊", lambda: render_overview(features))
+    tabs.add_tab("Recent Tweets", "🐦", lambda: render_recent_tweets())
+    tabs.add_tab("Analytics", "📈", lambda: render_analytics())
+    
+    # Setup breadcrumbs
+    breadcrumbs = Breadcrumbs()
+    breadcrumbs.add_item("Home", "dashboard", "🏠")
+    breadcrumbs.add_item(get_from_session("current_page", "Dashboard").title())
+    
+    # Render dashboard
+    dashboard.render()
 
-    # Footer
-    st.markdown("---")
-    st.markdown("""
-        <div style='text-align: center;'>
-            <p>Need help? Check out our <a href='#'>documentation</a> or <a href='#'>contact support</a></p>
-        </div>
-    """, unsafe_allow_html=True)
+def render_overview(features: Dict):
+    """Render the overview tab content."""
+    # Feature cards
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        FeatureCard(
+            title="Tweet Generator",
+            description="Create engaging tweets with AI assistance",
+            icon="✍️",
+            features=[
+                {
+                    "name": "AI-Powered",
+                    "description": "Generate tweets using advanced AI"
+                },
+                {
+                    "name": "Customizable",
+                    "description": "Adjust tone, length, and style"
+                }
+            ],
+            on_click=lambda: save_to_session("current_page", "tweet_generator")
+        ).render()
+    
+    with col2:
+        FeatureCard(
+            title="Analytics",
+            description="Track your tweet performance",
+            icon="📈",
+            features=[
+                {
+                    "name": "Engagement",
+                    "description": "Monitor likes, retweets, and replies"
+                },
+                {
+                    "name": "Growth",
+                    "description": "Track follower growth over time"
+                }
+            ]
+        ).render()
+    
+    with col3:
+        FeatureCard(
+            title="Settings",
+            description="Customize your experience",
+            icon="⚙️",
+            features=[
+                {
+                    "name": "Preferences",
+                    "description": "Set your default options"
+                },
+                {
+                    "name": "API",
+                    "description": "Configure Twitter API settings"
+                }
+            ]
+        ).render()
+
+def render_recent_tweets():
+    """Render the recent tweets tab content."""
+    # Tweet form
+    tweet_form = TweetForm(
+        on_submit=lambda: handle_tweet_submit()
+    )
+    tweet_form.render()
+    
+    # Recent tweets
+    st.markdown("### Recent Tweets")
+    tweets = get_from_session("tweets", [])
+    for tweet in tweets:
+        TweetCard(
+            content=tweet["content"],
+            engagement_score=tweet["engagement_score"],
+            hashtags=tweet["hashtags"],
+            emojis=tweet["emojis"],
+            metrics=tweet["metrics"],
+            on_copy=lambda: copy_tweet(tweet),
+            on_save=lambda: save_tweet(tweet)
+        ).render()
+
+def render_analytics():
+    """Render the analytics tab content."""
+    st.markdown("### Tweet Analytics")
+    st.info("Analytics features coming soon!")
+
+def handle_tweet_submit():
+    """Handle tweet form submission."""
+    # Get form data
+    content = get_from_session("tweet_content")
+    tone = get_from_session("tone")
+    length = get_from_session("length")
+    hashtags = get_from_session("hashtags")
+    emojis = get_from_session("emojis")
+    engagement_boost = get_from_session("engagement_boost")
+    
+    # Create tweet object
+    tweet = {
+        "content": content,
+        "tone": tone,
+        "length": length,
+        "hashtags": hashtags,
+        "emojis": emojis,
+        "engagement_score": engagement_boost,
+        "metrics": {
+            "Engagement": engagement_boost,
+            "Reach": engagement_boost * 0.8,
+            "Growth": engagement_boost * 0.6
+        }
+    }
+    
+    # Add to tweets list
+    tweets = get_from_session("tweets", [])
+    tweets.append(tweet)
+    save_to_session("tweets", tweets)
+    
+    # Show success message
+    show_success_message("Tweet created successfully!")
+
+def copy_tweet(tweet: Dict):
+    """Copy tweet to clipboard."""
+    show_success_message("Tweet copied to clipboard!")
+
+def save_tweet(tweet: Dict):
+    """Save tweet for later."""
+    show_success_message("Tweet saved!")
 
 if __name__ == "__main__":
     run_dashboard() 

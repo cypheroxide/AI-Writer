@@ -138,7 +138,7 @@ def do_web_research():
                         placeholder="Enter your Serper API key",
                         help="Get your key at https://serper.dev"
                     )
-                    test_key = st.checkbox("Test API key before saving", value=False, help="Validate the API key before saving")
+                    test_key = st.checkbox("Test API key before saving", value=False, help="Validate the API key before saving", key="test_serper_key")
                 with serper_col2:
                     if st.button("Save Serper", use_container_width=True):
                         if serper_key:
@@ -183,7 +183,7 @@ def do_web_research():
                             placeholder="Enter your Metaphor API key",
                             help="Get your key at https://metaphor.systems"
                         )
-                        test_metaphor = st.checkbox("Test API key before saving", value=False, help="Validate the API key before saving")
+                        test_metaphor = st.checkbox("Test API key before saving", value=False, help="Validate the API key before saving", key="test_metaphor_key")
                     with metaphor_col2:
                         if st.button("Save Metaphor", use_container_width=True):
                             if metaphor_key:
@@ -227,7 +227,7 @@ def do_web_research():
                             placeholder="Enter your Tavily API key",
                             help="Get your key at https://tavily.com"
                         )
-                        test_tavily = st.checkbox("Test API key before saving", value=False, help="Validate the API key before saving")
+                        test_tavily = st.checkbox("Test API key before saving", value=False, help="Validate the API key before saving", key="test_tavily_key")
                     with tavily_col2:
                         if st.button("Save Tavily", use_container_width=True):
                             if tavily_key:
@@ -271,7 +271,7 @@ def do_web_research():
                             placeholder="Enter your Firecrawl API key",
                             help="Get your key at https://firecrawl.co"
                         )
-                        test_firecrawl = st.checkbox("Test API key before saving", value=False, help="Validate the API key before saving")
+                        test_firecrawl = st.checkbox("Test API key before saving", value=False, help="Validate the API key before saving", key="test_firecrawl_key")
                     with firecrawl_col2:
                         if st.button("Save Firecrawl", use_container_width=True):
                             if firecrawl_key:
@@ -335,7 +335,7 @@ def do_web_research():
         # Define the research options dialog function
         @st.dialog("🔍 Research Options", width="large")
         def show_research_options():
-            tab1, tab2, tab3 = st.tabs(["Basic", "Advanced", "Technical"])
+            tab1, tab2 = st.tabs(["Basic", "Advanced"])
             
             with tab1:
                 st.session_state.research_options["related_keywords"] = st.text_input(
@@ -400,7 +400,10 @@ def do_web_research():
                         help="Time period for research results"
                     )
 
-            with tab3:
+                # Add the technical options to the Advanced tab
+                st.markdown("---")
+                st.markdown("### Advanced Search Parameters")
+                
                 st.session_state.research_options["include_domains"] = st.text_input(
                     "Include Domains",
                     value=st.session_state.research_options["include_domains"],
@@ -414,31 +417,6 @@ def do_web_research():
                     placeholder="https://example.com/page",
                     help="Find content similar to this URL"
                 )
-
-                # Research method selection
-                st.markdown("### Select Research Method")
-                search_options = [
-                    ("google", "🔍 Google Search", "Traditional web research with AI analysis", bool(api_keys['SERPER_API_KEY'])),
-                    ("ai", "🤖 AI Search", "Neural search with semantic analysis", bool(api_keys['METAPHOR_API_KEY'] and api_keys['TAVILY_API_KEY'])),
-                    ("deep", "🔬 Deep Search (Beta)", "Advanced deep web analysis", bool(all(api_keys.values())))
-                ]
-                
-                enabled_options = [opt[1] for opt in search_options if opt[3]]
-                if enabled_options:
-                    selected_option = st.radio(
-                        "Search Method",
-                        options=enabled_options,
-                        horizontal=True,
-                        help="Choose your preferred research method"
-                    )
-                    
-                    # Map the selected option to the search_mode value
-                    for mode, label, _, _ in search_options:
-                        if label == selected_option:
-                            st.session_state.research_options["search_mode"] = mode
-                            break
-                else:
-                    st.warning("No search methods available. Please configure API keys.")
 
             col1, col2 = st.columns([1, 1])
             with col1:
@@ -477,6 +455,31 @@ def do_web_research():
             if st.button("Research Options", use_container_width=True):
                 show_research_options()
 
+        # Research method selection in main container
+        st.markdown("### Select Research Method")
+        search_options = [
+            ("google", "🔍 Google Search", "Traditional web research with AI analysis", bool(api_keys['SERPER_API_KEY'])),
+            ("ai", "🤖 AI Search", "Neural search with semantic analysis", bool(api_keys['METAPHOR_API_KEY'] and api_keys['TAVILY_API_KEY'])),
+            ("deep", "🔬 Deep Search (Beta)", "Advanced deep web analysis", bool(all(api_keys.values())))
+        ]
+        
+        enabled_options = [opt[1] for opt in search_options if opt[3]]
+        if enabled_options:
+            selected_option = st.radio(
+                "Search Method",
+                options=enabled_options,
+                horizontal=True,
+                help="Choose your preferred research method"
+            )
+            
+            # Map the selected option to the search_mode value
+            for mode, label, _, _ in search_options:
+                if label == selected_option:
+                    st.session_state.research_options["search_mode"] = mode
+                    break
+        else:
+            st.warning("No search methods available. Please configure API keys.")
+
         # Execute search button
         if st.button("🔍 Start Research", type="primary", use_container_width=True):
             if not st.session_state.research_options["primary_keywords"]:
@@ -494,36 +497,89 @@ def do_web_research():
                     with progress_col:
                         progress_bar = st.progress(0)
 
+                def update_progress(message, progress=None, level="info"):
+                    """Update progress bar and status display.
+                    
+                    Args:
+                        message (str): The message to display
+                        progress (float, optional): Progress value between 0 and 100. Will be converted to 0.0-1.0
+                        level (str, optional): Message level (info, warning, error, success)
+                    """
+                    if progress is not None:
+                        # Convert percentage to decimal (0.0-1.0)
+                        progress = float(progress) / 100.0
+                        # Ensure progress stays within bounds
+                        progress = max(0.0, min(1.0, progress))
+                        progress_bar.progress(progress)
+                    
+                    if level == "error":
+                        status_display.error(f"🚫 {message}")
+                    elif level == "warning":
+                        status_display.warning(f"⚠️ {message}")
+                    elif level == "success":
+                        status_display.success(f"✨ {message}")
+                    else:
+                        status_display.info(f"🔄 {message}")
+                    logger.debug(f"Progress update [{level}]: {message}")
+
                 # Execute search with all parameters
-                web_research_result = gpt_web_researcher(
-                    search_keywords=st.session_state.research_options["primary_keywords"],
-                    search_mode=st.session_state.research_options["search_mode"],
-                    related_keywords=st.session_state.research_options["related_keywords"],
-                    target_audience=st.session_state.research_options["target_audience"],
-                    content_type=st.session_state.research_options["content_type"],
-                    search_depth=st.session_state.research_options["search_depth"],
-                    geo_location=st.session_state.research_options["geo_location"],
-                    search_language=st.session_state.research_options["search_language"],
-                    num_results=st.session_state.research_options["num_results"],
-                    time_range=st.session_state.research_options["time_range"],
-                    include_domains=st.session_state.research_options["include_domains"],
-                    similar_url=st.session_state.research_options["similar_url"]
-                )
+                try:
+                    update_progress("Starting search...", 0.25)
+                    logger.info(f"Executing web research with mode: {st.session_state.research_options['search_mode']}")
+                    
+                    # Create base parameters
+                    research_params = {
+                        "search_keywords": st.session_state.research_options["primary_keywords"],
+                        "search_mode": st.session_state.research_options["search_mode"],
+                        "related_keywords": st.session_state.research_options["related_keywords"],
+                        "target_audience": st.session_state.research_options["target_audience"],
+                        "content_type": st.session_state.research_options["content_type"],
+                        "search_depth": st.session_state.research_options["search_depth"],
+                        "geo_location": st.session_state.research_options["geo_location"],
+                        "search_language": st.session_state.research_options["search_language"],
+                        "num_results": st.session_state.research_options["num_results"],
+                        "time_range": st.session_state.research_options["time_range"],
+                        "include_domains": st.session_state.research_options["include_domains"],
+                        "similar_url": st.session_state.research_options["similar_url"]
+                    }
+                    
+                    # Add UI-specific parameters
+                    research_params.update({
+                        "status_container": status_display,
+                        "update_progress": update_progress
+                    })
+
+                    # For AI search mode, ensure search_keywords is passed correctly
+                    if st.session_state.research_options["search_mode"] == "ai":
+                        research_params["tavily_params"] = {
+                            "max_results": st.session_state.research_options["num_results"],
+                            "search_depth": "advanced" if st.session_state.research_options["search_depth"] > 2 else "basic",
+                            "time_range": st.session_state.research_options["time_range"],
+                            "include_domains": st.session_state.research_options["include_domains"].split(",") if st.session_state.research_options["include_domains"] else [""]
+                        }
+                        # Pass search_keywords as a positional argument
+                        research_params["tavily_search_keywords"] = st.session_state.research_options["primary_keywords"]
+                    
+                    # Execute the research
+                    web_research_result = gpt_web_researcher(**research_params)
+                    
+                    if web_research_result:
+                        status_display.success("✨ Research completed!")
+                        
+                        # Display results in an organized way
+                        with st.expander("📊 Research Results", expanded=False):
+                            st.write(web_research_result)
+                    else:
+                        st.warning("No results found for your search")
+                        
+                except Exception as e:
+                    error_msg = f"Research failed: {str(e)}"
+                    logger.error(error_msg, exc_info=True)
+                    st.error(f"🚫 Research failed: {error_msg}")
                 
-                if web_research_result:
-                    status_display.success("✨ Research completed!")
-                    
-                    # Display results in an organized way
-                    with st.expander("📊 Research Results", expanded=False):
-                        st.write(web_research_result)
-                else:
-                    st.warning("No results found for your search")
-                    
             except Exception as e:
-                error_msg = f"Research failed: {str(e)}"
-                logger.error(error_msg, exc_info=True)
-                st.error(f"🚫 Research failed: {error_msg}")
-                
+                logger.error(f"Unexpected error in web research: {e}", exc_info=True)
+                st.error("🚫 An unexpected error occurred. Please try again.")
     except Exception as e:
         logger.error(f"Unexpected error in web research: {e}", exc_info=True)
         st.error("🚫 An unexpected error occurred. Please try again.")

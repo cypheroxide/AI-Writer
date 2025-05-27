@@ -1,10 +1,16 @@
+"""
+UI setup module for ALwrity application.
+Provides consistent navigation and layout structure.
+"""
+
 import os
 import streamlit as st
 from lib.utils.file_processor import load_image
-from lib.utils.content_generators import content_planning_tools, ai_writers
+from lib.utils.content_generators import content_planning_tools
 from lib.utils.alwrity_utils import ai_social_writer
 from lib.utils.seo_tools import ai_seo_tools
 from lib.utils.settings_page import render_settings_page
+from loguru import logger
 
 # Import social media writer functions
 from lib.ai_writers.ai_facebook_writer.facebook_ai_writer import facebook_main_menu
@@ -12,7 +18,101 @@ from lib.ai_writers.linkedin_writer.linkedin_ai_writer import linkedin_main_menu
 from lib.ai_writers.twitter_writers import run_dashboard
 from lib.ai_writers.insta_ai_writer import insta_writer
 from lib.ai_writers.youtube_writers.youtube_ai_writer import youtube_main_menu
+from lib.ai_writers.ai_writer_dashboard import get_ai_writers, list_ai_writers
 
+def render_social_tools_dashboard():
+    """Render a modern dashboard for social media tools."""
+    st.markdown("""
+        <style>
+            .social-card {
+                background: white;
+                border-radius: 10px;
+                padding: 20px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                transition: transform 0.3s ease;
+                height: 100%;
+            }
+            .social-card:hover {
+                transform: translateY(-5px);
+            }
+            .social-icon {
+                font-size: 2.5rem;
+                margin-bottom: 15px;
+            }
+            .social-title {
+                font-size: 1.2rem;
+                font-weight: 600;
+                margin-bottom: 10px;
+            }
+            .social-description {
+                color: #666;
+                font-size: 0.9rem;
+                margin-bottom: 15px;
+            }
+            .social-button {
+                width: 100%;
+                padding: 8px 16px;
+                border-radius: 5px;
+                border: none;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.3s ease;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Define social tools with their details and paths
+    social_tools = {
+        "Facebook": {
+            "icon": "📘",
+            "description": "Create engaging Facebook posts and manage your content strategy",
+            "color": "#4267B2",
+            "path": "facebook"
+        },
+        "LinkedIn": {
+            "icon": "💼",
+            "description": "Generate professional LinkedIn content and optimize your profile",
+            "color": "#0077B5",
+            "path": "linkedin"
+        },
+        "Twitter": {
+            "icon": "🐦",
+            "description": "Craft viral tweets and manage your Twitter presence",
+            "color": "#1DA1F2",
+            "path": "twitter"
+        },
+        "Instagram": {
+            "icon": "📸",
+            "description": "Create Instagram captions and plan your visual content",
+            "color": "#E1306C",
+            "path": "instagram"
+        },
+        "YouTube": {
+            "icon": "🎥",
+            "description": "Generate video scripts and optimize your YouTube content",
+            "color": "#FF0000",
+            "path": "youtube"
+        }
+    }
+
+    # Create a grid of cards
+    cols = st.columns(3)
+    for idx, (platform, details) in enumerate(social_tools.items()):
+        with cols[idx % 3]:
+            st.markdown(f"""
+                <div class="social-card">
+                    <div class="social-icon">{details['icon']}</div>
+                    <div class="social-title">{platform}</div>
+                    <div class="social-description">{details['description']}</div>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            if st.button(f"Open {platform}", key=f"btn_{platform}", 
+                        help=f"Launch {platform} tools",
+                        use_container_width=True):
+                # Set query parameters to redirect to the specific tool
+                st.query_params["tool"] = details["path"]
+                st.rerun()
 
 def setup_ui():
     """Set up the UI with custom styling."""
@@ -295,37 +395,34 @@ def setup_ui():
 
 def setup_alwrity_ui():
     """Sets up the main navigation in the sidebar."""
+    logger.info("Setting up ALwrity UI")
+    
     # Initialize session state for active tab if not exists
     if 'active_tab' not in st.session_state:
         st.session_state.active_tab = "Content Planning"
+        logger.info(f"Initialized active_tab to: {st.session_state.active_tab}")
     
     # Initialize session state for active sub-tab if not exists
     if 'active_sub_tab' not in st.session_state:
         st.session_state.active_sub_tab = None
+        logger.info("Initialized active_sub_tab to None")
 
     # Define the navigation items with their icons and functions
     nav_items = {
+        "AI Writers": ("📝", get_ai_writers),
         "Content Planning": ("📅", content_planning_tools),
-        "AI Writers": ("📝", ai_writers),
-        "Agents Teams": ("🤝", lambda: st.subheader("Agents Teams - Coming Soon!")),
         "AI SEO Tools": ("🔍", ai_seo_tools),
-        "AI Social Tools": ("📱", None),  # Set to None as we'll handle this separately
-        "Ask Alwrity": ("💬", lambda: (
+        "AI Social Tools": ("📱", render_social_tools_dashboard),
+        "ALwrity Settings": ("⚙️", render_settings_page),
+        "Agents Teams(TBD)": ("🤝", lambda: st.subheader("Agents Teams - Coming Soon!")),
+        "Ask Alwrity(TBD)": ("💬", lambda: (
             st.subheader("Chat with your Data, Chat with any Data.. COMING SOON !"),
             st.markdown("Create a collection by uploading files (PDF, MD, CSV, etc), or crawl a data source (Websites, more sources coming soon."),
             st.markdown("One can ask/chat, summarize and do semantic search over the uploaded data")
-        )),
-        "ALwrity Settings": ("⚙️", render_settings_page)
+        ))
     }
     
-    # Define sub-menu items for AI Social Tools
-    social_tools_submenu = {
-        "Facebook": ("📘", lambda: facebook_main_menu()),
-        "LinkedIn": ("💼", lambda: linkedin_main_menu()),
-        "Twitter": ("🐦", lambda: run_dashboard()),
-        "Instagram": ("📸", lambda: insta_writer()),
-        "YouTube": ("🎥", lambda: youtube_main_menu())
-    }
+    logger.info(f"Defined {len(nav_items)} navigation items")
 
     # Create sidebar navigation
     st.sidebar.markdown("### ALwrity Options")
@@ -335,50 +432,12 @@ def setup_alwrity_ui():
     for name, (icon, func) in nav_items.items():
         button_class = "nav-button active" if st.session_state.active_tab == name else "nav-button"
         
-        if name == "AI Social Tools":
-            # For AI Social Tools, we'll create a button that toggles the sub-menu
-            if st.sidebar.button(f"{icon} {name}", key=f"nav_{name}", 
-                               help=f"Navigate to {name}", use_container_width=True):
-                st.session_state.active_tab = name
-                # Reset sub-tab when main tab changes
-                st.session_state.active_sub_tab = None
-            
-            # If AI Social Tools is active, show the sub-menu
-            if st.session_state.active_tab == "AI Social Tools":
-                st.sidebar.markdown('<div class="sub-menu">', unsafe_allow_html=True)
-                
-                # Create sub-menu buttons
-                for sub_name, (sub_icon, sub_func) in social_tools_submenu.items():
-                    # Create the button with a custom key that includes the platform name
-                    button_key = f"sub_{sub_name}"
-                    
-                    # Determine if this button is active
-                    is_active = st.session_state.active_sub_tab == sub_name
-                    
-                    # Create a container with the platform-specific class
-                    platform_class = f"{sub_name.lower()}-button"
-                    if is_active:
-                        platform_class += " active"
-                    
-                    # Add the platform-specific class to the button container
-                    st.sidebar.markdown(f'<div class="{platform_class}">', unsafe_allow_html=True)
-                    
-                    # Create the button
-                    if st.sidebar.button(f"{sub_icon} {sub_name}", key=button_key, 
-                                       help=f"Navigate to {sub_name}", use_container_width=True):
-                        st.session_state.active_sub_tab = sub_name
-                    
-                    # Close the div
-                    st.sidebar.markdown('</div>', unsafe_allow_html=True)
-                
-                st.sidebar.markdown('</div>', unsafe_allow_html=True)
-        else:
-            # For other navigation items, create regular buttons
-            if st.sidebar.button(f"{icon} {name}", key=f"nav_{name}", 
-                               help=f"Navigate to {name}", use_container_width=True):
-                st.session_state.active_tab = name
-                # Reset sub-tab when main tab changes
-                st.session_state.active_sub_tab = None
+        if st.sidebar.button(f"{icon} {name}", key=f"nav_{name}", 
+                           help=f"Navigate to {name}", use_container_width=True):
+            st.session_state.active_tab = name
+            # Reset sub-tab when main tab changes
+            st.session_state.active_sub_tab = None
+            logger.info(f"Selected main tab: {name}")
 
     st.sidebar.markdown('</div>', unsafe_allow_html=True)
 
@@ -389,10 +448,36 @@ def setup_alwrity_ui():
         st.sidebar.image(icon_path, use_container_width=False)
     st.sidebar.markdown('</div>', unsafe_allow_html=True)
 
-    # Display content based on active tab
+    # Display content based on active tab and tool selection
     if st.session_state.active_tab == "AI Social Tools":
-        if not st.session_state.active_sub_tab:
-            # Only show title and info when no sub-tab is selected
+        # Check if a specific tool is selected
+        selected_tool = st.query_params.get("tool")
+        if selected_tool:
+            # Add a back button at the top
+            if st.button("← Back to Social Tools Dashboard", key=f"back_to_dashboard_{selected_tool}"):
+                # Clear the tool query parameter
+                st.query_params.clear()
+                st.rerun()
+            
+            # Map tool paths to their respective functions
+            tool_functions = {
+                "facebook": facebook_main_menu,
+                "linkedin": linkedin_main_menu,
+                "twitter": run_dashboard,
+                "instagram": insta_writer,
+                "youtube": youtube_main_menu
+            }
+            
+            if selected_tool in tool_functions:
+                # Clear any existing content
+                st.empty()
+                # Execute the selected tool's function
+                tool_functions[selected_tool]()
+            else:
+                st.error(f"Invalid tool selected: {selected_tool}")
+                render_social_tools_dashboard()
+        else:
+            # Show the dashboard if no tool is selected
             st.markdown("""
                 <style>
                     .main .block-container {
@@ -401,39 +486,43 @@ def setup_alwrity_ui():
                 </style>
             """, unsafe_allow_html=True)
             st.title(f"{nav_items[st.session_state.active_tab][0]} {st.session_state.active_tab}")
-            st.info("Please select a social media platform from the sidebar.")
+            render_social_tools_dashboard()
+    else:
+        # Handle other tabs as before
+        if st.session_state.active_tab == "AI Writers":
+            writer = st.query_params.get("writer")
+            logger.info(f"Current writer from query params: {writer}")
+            
+            if writer:
+                writers = list_ai_writers()
+                logger.info(f"Found {len(writers)} writers")
+                
+                writer_found = False
+                for w in writers:
+                    logger.info(f"Checking writer: {w['name']} with path: {w['path']}")
+                    if w["path"] == writer:
+                        writer_found = True
+                        logger.info(f"Found matching writer: {w['name']}, executing function")
+                        st.empty()
+                        w["function"]()
+                        break
+                
+                if not writer_found:
+                    logger.error(f"No writer found with path: {writer}")
+                    st.error(f"No writer found with path: {writer}")
+            else:
+                logger.info("No writer selected, showing dashboard")
+                get_ai_writers()
         else:
-            # When a platform is selected, show no title and minimize spacing
             st.markdown("""
                 <style>
                     .main .block-container {
-                        padding-top: 0 !important;
+                        padding-top: 0.25rem !important;
                         padding-bottom: 0;
-                    }
-                    
-                    /* Remove all margins and padding from content area */
-                    .element-container {
-                        margin: 0 !important;
-                        padding: 0 !important;
-                    }
-                    
-                    /* Hide any automatic headers */
-                    .main .block-container > div:first-child {
-                        margin-top: 0 !important;
-                        padding-top: 0 !important;
                     }
                 </style>
             """, unsafe_allow_html=True)
-            # Call the function directly without any title
-            social_tools_submenu[st.session_state.active_sub_tab][1]()
-    else:
-        st.markdown("""
-            <style>
-                .main .block-container {
-                    padding-top: 0.25rem !important;
-                    padding-bottom: 0;
-                }
-            </style>
-        """, unsafe_allow_html=True)
-        st.title(f"{nav_items[st.session_state.active_tab][0]} {st.session_state.active_tab}")
-        nav_items[st.session_state.active_tab][1]()
+            st.title(f"{nav_items[st.session_state.active_tab][0]} {st.session_state.active_tab}")
+            nav_items[st.session_state.active_tab][1]()
+    
+    logger.info("Finished setting up ALwrity UI")

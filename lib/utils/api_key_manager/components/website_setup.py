@@ -3,18 +3,19 @@
 import streamlit as st
 from loguru import logger
 from ...website_analyzer import analyze_website
-from ...website_analyzer.seo_analyzer import analyze_seo
+from ...website_analyzer.analyzer import WebsiteAnalyzer
 import asyncio
 import sys
 from typing import Dict, Any
 from ..manager import APIKeyManager
 from .base import render_navigation_buttons
+import os
 
 # Configure logger to output to both file and stdout
 logger.remove()  # Remove default handler
 logger.add(
     "logs/website_setup.log",
-    rotation="500 MB",
+    rotation="50 MB",
     retention="10 days",
     level="DEBUG",
     format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}"
@@ -24,6 +25,9 @@ logger.add(
     level="INFO",
     format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{message}</cyan>"
 )
+
+# Ensure logs directory exists
+os.makedirs("logs", exist_ok=True)
 
 def render_website_setup(api_key_manager: APIKeyManager) -> Dict[str, Any]:
     """Render the website setup step.
@@ -42,8 +46,69 @@ def render_website_setup(api_key_manager: APIKeyManager) -> Dict[str, Any]:
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        url = st.text_input("Enter your website URL, if you own one", placeholder="https://example.com")
+        # Get existing website URL from environment or .env file
+        existing_url = os.getenv('WEBSITE_URL', None)
+        if not existing_url and os.path.exists('.env'):
+            try:
+                with open('.env', 'r') as f:
+                    for line in f:
+                        if line.strip().startswith('WEBSITE_URL='):
+                            existing_url = line.strip().split('=')[1]
+                            break
+            except Exception as e:
+                logger.error(f"[render_website_setup] Failed to read existing URL from .env: {str(e)}")
+        
+        # If existing_url is 'no_website_provided', set it to empty for better UX
+        if existing_url == 'no_website_provided':
+            existing_url = ''
+        
+        url = st.text_input(
+            "Enter your website URL, if you own one",
+            value=existing_url if existing_url else "",
+            placeholder="https://example.com"
+        )
         logger.info(f"[render_website_setup] URL input value: {url}")
+        
+        # Save URL to .env file
+        try:
+            # Check if WEBSITE_URL already exists in .env file
+            website_url_exists = False
+            env_lines = []
+            
+            if os.path.exists('.env'):
+                with open('.env', 'r') as f:
+                    for line in f:
+                        if line.strip().startswith('WEBSITE_URL='):
+                            website_url_exists = True
+                            # Replace the existing WEBSITE_URL line with the new value
+                            if url:
+                                env_lines.append(f"WEBSITE_URL={url}\n")
+                            else:
+                                env_lines.append("WEBSITE_URL=no_website_provided\n")
+                        else:
+                            env_lines.append(line)
+            
+            # If WEBSITE_URL doesn't exist, add it
+            if not website_url_exists:
+                if url:
+                    env_lines.append(f"WEBSITE_URL={url}\n")
+                else:
+                    env_lines.append("WEBSITE_URL=no_website_provided\n")
+            
+            # Write all lines back to the .env file
+            with open('.env', 'w') as f:
+                f.writelines(env_lines)
+            
+            # Set environment variable
+            if url:
+                os.environ['WEBSITE_URL'] = url
+                logger.info(f"[render_website_setup] Saved website URL to .env: {url}")
+            else:
+                os.environ['WEBSITE_URL'] = "no_website_provided"
+                logger.info("[render_website_setup] Set default website URL: no_website_provided")
+                
+        except Exception as e:
+            logger.error(f"[render_website_setup] Failed to save website URL: {str(e)}")
         
         analyze_type = st.radio(
             "Analysis Type",
@@ -62,37 +127,19 @@ def render_website_setup(api_key_manager: APIKeyManager) -> Dict[str, Any]:
                         # Call the analyze_website function
                         results = analyze_website(url)
                         
-                        # If full analysis is selected, add SEO analysis
-                        if analyze_type == "Full Analysis with SEO":
-                            seo_results = analyze_seo(url)
-                            if seo_results.success:
-                                results['data']['seo_analysis'] = {
-                                    'overall_score': seo_results.overall_score,
-                                    'meta_tags': {
-                                        'title': seo_results.meta_tags.title,
-                                        'description': seo_results.meta_tags.description,
-                                        'keywords': seo_results.meta_tags.keywords,
-                                        'has_robots': seo_results.meta_tags.has_robots,
-                                        'has_sitemap': seo_results.meta_tags.has_sitemap
-                                    },
-                                    'content': {
-                                        'word_count': seo_results.content.word_count,
-                                        'readability_score': seo_results.content.readability_score,
-                                        'content_quality_score': seo_results.content.content_quality_score,
-                                        'headings_structure': seo_results.content.headings_structure,
-                                        'keyword_density': seo_results.content.keyword_density
-                                    },
-                                    'recommendations': [
-                                        {
-                                            'priority': rec.priority,
-                                            'category': rec.category,
-                                            'issue': rec.issue,
-                                            'recommendation': rec.recommendation,
-                                            'impact': rec.impact
-                                        }
-                                        for rec in seo_results.recommendations
-                                    ]
-                                }
+                        # Replace the old SEO analysis code with the new analyzer
+                        analyzer = WebsiteAnalyzer()
+                        seo_results = analyzer.analyze_website(url)
+                        if seo_results.get('success', False):
+                            results['data']['seo_analysis'] = seo_results['data']['analysis']['seo_info']
+                        else:
+                            results['data']['seo_analysis'] = {
+                                'error': seo_results.get('error', 'Unknown error in SEO analysis'),
+                                'overall_score': 0,
+                                'meta_tags': {},
+                                'content': {},
+                                'recommendations': []
+                            }
                         
                         logger.debug(f"[render_website_setup] Analysis results received: {results.get('success', False)}")
                         
